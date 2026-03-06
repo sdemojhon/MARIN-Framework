@@ -1,0 +1,186 @@
+# MARIN Framework - Default Configuration
+# Complete hyperparameter specification for reproducibility
+
+# =============================================================================
+# NETWORK PARAMETERS
+# =============================================================================
+network:
+  n_nodes: 1000                    # Number of agents (N)
+  n_layers: 3                      # Number of network layers
+  initial_topology: "barabasi_albert"  # Initial network type
+  ba_m: 5                          # BA model parameter
+  clustering_coefficient: [0.3, 0.5]   # Target clustering range
+  
+# Layer-specific parameters
+layers:
+  layer_1:  # Information Sharing
+    name: "information_sharing"
+    gamma: 0.8                     # Link formation scaling
+    lambda: 1.0                    # Homophily coefficient
+    epsilon: 0.05                  # Baseline connection rate
+    psi: 0.2                       # Influence weight
+    
+  layer_2:  # Social Reinforcement
+    name: "social_reinforcement"
+    gamma: 0.7
+    lambda: 1.5
+    epsilon: 0.03
+    psi: 0.3
+    
+  layer_3:  # Private Communication
+    name: "private_communication"
+    gamma: 0.6
+    lambda: 2.0
+    epsilon: 0.02
+    psi: 0.5
+
+# =============================================================================
+# CO-EVOLUTION PARAMETERS
+# =============================================================================
+coevolution:
+  omega: 0.1                       # Rewiring rate
+  omega_range: [0.01, 0.05, 0.1, 0.2, 0.5]  # For experiments
+  eta: 0.9                         # Temporal discount factor
+  delta: 1.0                       # Disagreement sensitivity
+  phi: 0.5                         # Inactivity sensitivity
+  theta: 0.5                       # Dissolution threshold
+
+# Cross-layer coupling matrix
+coupling_matrix:
+  C12: 0.30                        # Layer 1 → Layer 2
+  C13: 0.10                        # Layer 1 → Layer 3
+  C21: 0.20                        # Layer 2 → Layer 1
+  C23: 0.25                        # Layer 2 → Layer 3
+  C31: 0.15                        # Layer 3 → Layer 1
+  C32: 0.35                        # Layer 3 → Layer 2
+
+# =============================================================================
+# BELIEF DYNAMICS PARAMETERS
+# =============================================================================
+belief:
+  mu: 0.1                          # Belief update rate
+  kappa: 1.5                       # Confirmation bias parameter
+  initial_distribution: "beta"     # Beta(2,2) distribution
+  beta_alpha: 2.0
+  beta_beta: 2.0
+
+# =============================================================================
+# REINFORCEMENT LEARNING PARAMETERS
+# =============================================================================
+agent:
+  # GNN Encoder
+  gnn_layers: 3                    # Number of message-passing layers
+  embedding_dim: 128               # Node embedding dimension
+  aggregation: "mean"              # Aggregation function
+  attention_heads: 4               # Cross-layer attention heads
+  
+  # DDQN
+  hidden_dim: 256                  # MLP hidden dimension
+  n_hidden_layers: 2               # Number of hidden layers
+  activation: "relu"               # Activation function
+  
+  # Action space
+  n_intervention_types: 4          # Number of intervention types
+  budget: 50                       # Maximum interventions per step
+  
+  # Learning
+  learning_rate: 0.0001            # Adam learning rate
+  gamma: 0.99                      # Discount factor
+  tau: 1000                        # Target network update frequency
+  
+  # Experience replay
+  buffer_size: 100000              # Replay buffer size
+  batch_size: 64                   # Training batch size
+  prioritized_replay: true         # Use prioritized experience replay
+  alpha: 0.6                       # Priority exponent
+  beta_start: 0.4                  # Importance sampling start
+  beta_end: 1.0                    # Importance sampling end
+  
+  # Exploration
+  epsilon_start: 1.0               # Initial exploration rate
+  epsilon_end: 0.01                # Final exploration rate
+  epsilon_decay: 0.995             # Exploration decay rate
+
+# =============================================================================
+# REWARD FUNCTION WEIGHTS
+# =============================================================================
+reward:
+  w1: 0.4                          # Misinformation reach reduction
+  w2: 0.2                          # Belief polarization reduction
+  w3: 0.2                          # Echo chamber disruption
+  w4: 0.2                          # Intervention cost
+
+# =============================================================================
+# TRAINING PARAMETERS
+# =============================================================================
+training:
+  n_episodes: 2000                 # Total training episodes
+  max_steps: 200                   # Max steps per episode
+  curriculum_learning: true        # Enable curriculum learning
+  curriculum_start_omega: 0.05     # Starting co-evolution rate
+  curriculum_end_omega: 0.2        # Ending co-evolution rate
+  curriculum_interval: 500         # Episodes between increases
+  
+  # Evaluation
+  eval_frequency: 100              # Episodes between evaluations
+  eval_runs: 10                    # Runs per evaluation
+  
+  # Checkpointing
+  save_frequency: 500              # Episodes between saves
+  checkpoint_dir: "checkpoints/"
+
+# =============================================================================
+# SIMULATION PARAMETERS
+# =============================================================================
+simulation:
+  n_monte_carlo_runs: 100          # Number of MC runs
+  random_seeds: [1, 100]           # Seed range
+  misinformation_seed_rate: 0.05   # Initial infection rate
+  timestep_hours: 6                # Real-time equivalent
+
+# =============================================================================
+# EVALUATION METRICS
+# =============================================================================
+metrics:
+  - "mrr"                          # Misinformation Reach Reduction
+  - "bpi"                          # Belief Polarization Index
+  - "ecd"                          # Echo Chamber Density
+  - "ie"                           # Intervention Efficiency
+  - "pgc"                          # Prediction Gap Closure
+
+# =============================================================================
+# BASELINE CONFIGURATIONS
+# =============================================================================
+baselines:
+  random:
+    name: "Random Targeting"
+    
+  degree:
+    name: "Degree Centrality"
+    
+  betweenness:
+    name: "Betweenness Centrality"
+    
+  static_abm:
+    name: "Static Agent-Based Model"
+    
+  greedy:
+    name: "Greedy Influence Maximization"
+    
+  acr:
+    name: "Adaptive Centrality Recalculation"
+    update_frequency: 1            # Recalculate every step
+
+# =============================================================================
+# LOGGING & OUTPUT
+# =============================================================================
+logging:
+  level: "INFO"
+  log_dir: "logs/"
+  tensorboard: true
+  wandb: false                     # Set to true if using Weights & Biases
+  
+output:
+  results_dir: "results/"
+  figures_dir: "results/figures/"
+  tables_dir: "results/tables/"
