@@ -4,7 +4,7 @@
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Paper](https://img.shields.io/badge/Paper-NEJCS%202026-green.svg)](https://orb.binghamton.edu/nejcs/)
+[![Foundational paper DOI](https://img.shields.io/badge/Foundational%20paper-10.63562%2F2577--8439.1152-green.svg)](https://doi.org/10.63562/2577-8439.1152)
 
 ## Overview
 
@@ -28,20 +28,21 @@ MARIN is a novel framework that combines **deep reinforcement learning** with **
 
 | Metric | MARIN vs Static Baseline | MARIN vs Adaptive Baseline |
 |--------|-------------------------|---------------------------|
-| MRR Improvement (ω=0.2) | **+47%** | **+21%** |
-| MRR Improvement (ω=0.05) | **+34%** | **+13%** |
-| Critical Threshold | ω* ≈ 0.15 | - |
+| MRR Improvement (omega = 0.2) | **+47%** | **+21%** |
+| MRR Improvement (omega = 0.05) | **+34%** | **+13%** |
+| Critical Threshold | omega* ≈ 0.15 | – |
 
 ## Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/[YOUR-USERNAME]/MARIN-Framework.git
+git clone https://github.com/sdemojhon/MARIN-Framework.git
 cd MARIN-Framework
 
 # Create virtual environment
 python -m venv marin_env
-source marin_env/bin/activate  # On Windows: marin_env\Scripts\activate
+source marin_env/bin/activate          # Linux / macOS
+# marin_env\Scripts\activate           # Windows
 
 # Install dependencies
 pip install -r requirements.txt
@@ -52,124 +53,141 @@ pip install -r requirements.txt
 - Python 3.8+
 - PyTorch 1.12+
 - NetworkX 3.2+
-- Mesa 2.1+
 - NumPy
 - Pandas
 - Matplotlib
+- PyYAML
 
 ## Quick Start
 
 ```python
-from src.marin_network import MultiplexNetwork
-from src.marin_agent import MARINAgent
-from src.simulation import run_simulation
+from src.simulation import run_simulation, run_monte_carlo
 
-# Initialize network
-network = MultiplexNetwork(n_nodes=1000, n_layers=3)
+# Single trajectory
+result = run_simulation(seed=1, n_nodes=1000, omega=0.1, n_steps=200)
+print(result.summary())
 
-# Initialize MARIN agent
-agent = MARINAgent(
-    state_dim=128,
-    n_intervention_types=4,
-    budget=50
+# 100-run Monte Carlo ensemble (paper protocol)
+agg = run_monte_carlo(
+    seeds=range(1, 101),
+    n_nodes=1000,
+    omega=0.1,
+    n_steps=200,
+    output_dir="results/tables/quick_demo",
 )
+print(f"MRR = {agg['mrr']['mean']:.2f} +/- {agg['mrr']['std']:.2f}")
+```
 
-# Run simulation
-results = run_simulation(
-    network=network,
-    agent=agent,
-    n_episodes=2000,
-    co_evolution_rate=0.1
-)
+## Reproducing the Paper Tables
 
-print(f"Final MRR: {results['mrr']:.2f}%")
+```bash
+# Smoke-test the entire pipeline in < 1 minute
+python experiments/run_baseline.py --quick
+
+# Table 3 (Section 5.2) — MRR and IE across strategies
+python experiments/run_baseline.py --omega 0.05 --output results/tables/table3_omega05.json
+python experiments/run_baseline.py --omega 0.20 --output results/tables/table3_omega20.json
+
+# Table 4 (Section 5.3) — ablation study
+python experiments/run_ablation.py --output results/tables/table4.json
+
+# Table 5 (Section 5.5) — scalability across N = 1k / 2k / 5k
+python experiments/run_scalability.py --output results/tables/table5.json
+```
+
+## Training a Fresh Agent
+
+```bash
+# Quick demo checkpoint (≈5 min on a laptop CPU)
+python experiments/train.py --quick
+
+# Full paper checkpoint for N = 1,000 (≈6 h on a single GPU)
+python experiments/train.py --n_nodes 1000 --episodes 2000 --output models/marin_n1000.pt
 ```
 
 ## Repository Structure
 
 ```
 MARIN-Framework/
-├── README.md                 # This file
-├── LICENSE                   # MIT License
-├── requirements.txt          # Python dependencies
+├── README.md                       # This file
+├── LICENSE                         # MIT License
+├── requirements.txt                # Python dependencies
 ├── src/
 │   ├── __init__.py
-│   ├── marin_network.py      # Multiplex network model
-│   ├── marin_agent.py        # DDQN agent implementation
-│   ├── gnn_encoder.py        # Graph Neural Network encoder
-│   ├── belief_dynamics.py    # Agent belief update mechanisms
-│   ├── interventions.py      # Intervention type implementations
-│   └── simulation.py         # Monte Carlo simulation runner
+│   ├── marin_network.py            # Co-evolving multiplex network (Eqs. 1-3)
+│   ├── marin_agent.py              # DDQN agent + GNN encoder + replay (Eqs. 7, 8, 10)
+│   ├── belief_dynamics.py          # Belief update mechanisms (Eqs. 4-6)
+│   ├── interventions.py            # Four intervention action types
+│   ├── gnn_encoder.py              # Encoder factory (re-export of GNNEncoder)
+│   └── simulation.py               # Monte Carlo simulation orchestrator
+├── experiments/
+│   ├── train.py                    # DDQN training driver (Algorithm 1)
+│   ├── run_baseline.py             # Reproduces Table 3
+│   ├── run_ablation.py             # Reproduces Table 4
+│   └── run_scalability.py          # Reproduces Table 5
 ├── configs/
-│   ├── default_config.yaml   # Default hyperparameters
-│   └── experiment_configs/   # Experiment-specific configs
+│   ├── default_config.yaml         # Default hyperparameters (matches Table 2)
+│   └── experiment_configs/         # Per-experiment YAML overrides
 ├── data/
-│   ├── synthetic/            # Generated synthetic networks
-│   └── README.md             # Data documentation
+│   ├── synthetic/
+│   │   └── generate_networks.py    # Generates seeded synthetic networks
+│   └── README.md                   # Data documentation
+├── models/
+│   └── README.md                   # How to obtain / load checkpoints
 ├── results/
-│   ├── figures/              # Generated figures
-│   └── tables/               # Result tables
-├── docs/
-│   ├── graphical_abstract.png
-│   └── equations.md          # Mathematical formulations
-└── experiments/
-    ├── run_baseline.py       # Baseline comparison experiments
-    ├── run_ablation.py       # Ablation studies
-    └── run_scalability.py    # Scalability analysis
+│   ├── figures/                    # Auto-populated by experiment scripts
+│   ├── tables/                     # Auto-populated by experiment scripts
+│   └── README.md
+└── docs/
+    ├── graphical_abstract.png      # Architecture diagram
+    └── equations.md                # Complete mathematical formulation
 ```
 
 ## Hyperparameters
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| N | 1,000-5,000 | Network size |
-| ω | 0.01-0.5 | Co-evolution rate |
-| λ | 0.5-5.0 | Homophily strength |
-| μ | 0.1 | Belief update rate |
-| κ | 1.5 | Confirmation bias parameter |
-| γ | 0.99 | Discount factor |
-| τ | 1,000 | Target network update frequency |
+| N | 1,000–5,000 | Network size |
+| omega | 0.01–0.5 | Co-evolution rate |
+| lambda | 0.5–5.0 | Homophily strength |
+| mu | 0.1 | Belief update rate |
+| kappa | 1.5 | Confirmation bias parameter |
+| gamma | 0.99 | Discount factor |
+| tau | 1,000 | Target network update frequency |
 
-See `configs/default_config.yaml` for complete hyperparameter specification.
+See `configs/default_config.yaml` for the complete hyperparameter specification.
 
 ## Reproducibility
 
-All experiments use random seeds 1-100 for reproducibility:
+All experiments use the random seeds 1–100, set through `src.simulation.set_seed()`,
+which seeds NumPy, Python's `random`, and PyTorch (CPU + CUDA where available).
 
 ```python
-import numpy as np
-import torch
-import random
+from src.simulation import set_seed, run_simulation
 
-def set_seed(seed):
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    random.seed(seed)
-
-# Run 100 Monte Carlo simulations
 for seed in range(1, 101):
     set_seed(seed)
-    results = run_simulation(...)
+    results = run_simulation(seed=seed, n_nodes=1000, omega=0.1)
 ```
 
 ## Mathematical Formulation
 
 ### Link Formation (Equation 1)
 ```
-f_l(i,j,t) = γ_l · exp(-λ_l · |b_i(t) - b_j(t)|) + ε_l
+f_l(i, j, t) = γ_l · exp(-λ_l · |b_i(t) - b_j(t)|) + ε_l
 ```
 
 ### Belief Update (Equation 4)
 ```
-b_i(t+1) = (1-μ) · b_i(t) + μ · [κ · B_i(m,t) + (1-κ) · S_i(t)]
+b_i(t+1) = (1 - μ) · b_i(t) + μ · [κ · B_i(m, t) + (1 - κ) · S_i(t)]
 ```
 
 ### Reward Function (Equation 9)
 ```
-R(t) = w₁·ΔMR(t) + w₂·ΔBP(t) + w₃·ECD(t) - w₄·IC(t)
+R(t) = w_1·ΔMR(t) + w_2·ΔBP(t) + w_3·ECD(t) - w_4·IC(t)
 ```
 
-See `docs/equations.md` for complete mathematical formulations.
+See `docs/equations.md` for the complete mathematical formulation.
 
 ## Citation
 
@@ -177,29 +195,50 @@ If you use this code in your research, please cite:
 
 ```bibtex
 @article{bhadre2026marin,
-  title={Adaptive Intervention Strategies in Co-Evolving Multiplex Networks: 
-         A Reinforcement Learning Approach to Real-Time Misinformation Containment},
-  author={Bhadre, Anjali and Ghongade, Harshvardhan},
-  journal={Northeast Journal of Complex Systems (NEJCS)},
-  year={2026},
-  publisher={Binghamton University}
+  title   = {Adaptive Intervention Strategies in Co-Evolving Multiplex Networks:
+             A Reinforcement Learning Approach to Real-Time Misinformation Containment},
+  author  = {Bhadre, Anjali A. and Ghongade, Harshvardhan P.},
+  journal = {Northeast Journal of Complex Systems (NEJCS)},
+  year    = {2026},
+  note    = {Forthcoming}
 }
 ```
 
-## Related Work
+## Related / Foundational Work
 
-This work builds upon our prior research:
+This work builds upon our prior, peer-reviewed research:
 
-- Ghongade, H. & Bhadre, A. (2026). "Multiplex Social Networks for Misinformation Control." *Northeast Journal of Complex Systems*, forthcoming.
+> Ghongade, H. P., Bhadre, A. A., Agarwal, S., Pawar, H. U. and Rane, H. S. (2026).
+> "Emergent Dynamics in Multiplex Social Networks: Agent-Based Modeling of Information
+> Diffusion for Misinformation Control."
+> *Northeast Journal of Complex Systems*, 8(1), Article 12.
+> [DOI: 10.63562/2577-8439.1152](https://doi.org/10.63562/2577-8439.1152) ·
+> [open-access at NEJCS](https://orb.binghamton.edu/nejcs/vol8/iss1/12)
+
+```bibtex
+@article{ghongade2026multiplex,
+  title    = {Emergent Dynamics in Multiplex Social Networks: Agent-Based Modeling
+              of Information Diffusion for Misinformation Control},
+  author   = {Ghongade, Harshvardhan P. and Bhadre, Anjali A. and Agarwal, Shivani
+              and Pawar, Harjitkumar U. and Rane, Harshal S.},
+  journal  = {Northeast Journal of Complex Systems},
+  volume   = {8},
+  number   = {1},
+  pages    = {Article 12},
+  year     = {2026},
+  doi      = {10.63562/2577-8439.1152},
+  url      = {https://orb.binghamton.edu/nejcs/vol8/iss1/12}
+}
+```
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
 
 ## Contact
 
-- **Anjali Bhadre** (Corresponding Author): anjalibhadre38@gmail.com
-- **Harshvardhan Ghongade**: ghongade@gmail.com
+- **Anjali A. Bhadre** (Corresponding Author) — anjali.bhadre@raisoni.net
+- **Harshvardhan P. Ghongade** — ghongade@gmail.com
 
 ## Acknowledgments
 

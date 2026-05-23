@@ -1,0 +1,13 @@
+# Table 3 setting: low co-evolution regime (omega = 0.05)
+# Section 5.2 of the manuscript.
+n_nodes: 1000
+omega: 0.05
+n_steps: 200
+n_monte_carlo_runs: 100
+budget_fraction: 0.05
+seeds_range: [1, 100]
+reward_weights:
+  w1: 0.4   # delta misinformation reach
+  w2: 0.2   # delta belief polarisation
+  w3: 0.2   # echo-chamber disruption
+  w4: 0.2   # intervention cost
